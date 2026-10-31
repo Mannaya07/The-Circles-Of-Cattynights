@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title> The Circles Of Catty Nights </title>
+
+
+  
+	<link rel="stylesheet" href="rsc/AnimalettoOrologio.css">
+	<link rel="stylesheet" href="rsc/AeroMusicPlayer.css">
+	<script src="rsc/AnimalettoOrologioExtra.js" defer></script>
+	<script src="rsc/AeroMusicPlayer.js" defer></script>
+
+
+	<style>
+
+
+
+	button:hover {
+
+		cursor: pointer;
+	}
+	
+
+	
+@media (max-width: 600px) { /* Qui va ad essere 600px ma vai sempre a fixare il tutto per 300px */
+
+	.catsad {
+
+            width: 93vw;
+        }
+
+/* Avendo una grandezza predifinita del browser, per cambiare dimensione bisogna triccarlo così. */
+
+
+    .aud1 audio {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+            .maremma {
+
+            font-size: 14.7px;
+        }
+
+
+}
+
+
+</style>
+
+
+</head>
+<body style="background-image: url('rsc/bgimg/background1.png');" >
+
+
+	<!-- Ricordati sempre di fare i fix per il telefono vai a vedere cartella informaizioni se non ti ricordi, li nei vari file c'è scritto tutto.  -->
+
+	<br>
+	<br>
+
+<div style="border: 5px solid white; background-color: lightgreen; display: inline-block;">
+
+<h1 style="color: black;" >Hello everyone, I'm Mannaya! On this site, you'll find cats wishing you goodnight, each with dreams I had, sharing them one by one, every day. I hope you enjoy reading and spending time here! </h1>
+
+<h2> Here below, you'll find all the buttons for the categories I mentioned above:</h2>
+
+
+</div>
+
+<br>
+<br>
+
+<br>
+
+<a href="rsc/myblog.html" target="_blank"> <button style="background-color: pink; color: black; border-radius: 30px" > My Blog :D </button></a>
+
+<a href="rsc/dreams/cat.html" target="_blank"> <button style="background-color: purple; color: white; border-radius: 30px" > Gatti della buonanotte :3 </button></a>
+
+
+<a href="rsc/events/events.html" target="_blank"> <button style="background-color: yellow; color: black; border-radius: 30px;" > Events </button> </a>
+
+<a href="rsc/email.html" target="_blank"> <button style="background-color: #807C7E; color: #DAEB1B; border-radius: 30px;" > Email </button> </a>
+
+<br>
+<br>
+
+
+
+<br> <!-- Questo aggiunge uno spazio di un blocco sotto -->
+
+<div style="background-color: #86F1BA; border: 5px solid #0D6A5E; color: #851C14; display: inline-block;">
+
+<h1 class="maremma" style="font-family: Georgia;">last update | 31/10/2026/21:58 ⌚ | </h1>
+
+
+
+
+</div>
+
+<br>
+<br>
+<br>
+<br>
+
+<div class="aud1">
+
+
+<div class="aero-player" id="aero-music-player"> <a href="info.html" target="_blank"  ><button style="background-color: cyan; color: black; border-radius: 30px;"> Info </button></a>
+  <br>
+  <br>
+  <div class="aero-player-top">
+    <div class="aero-player-icon">♫</div>
+    <div class="aero-player-heading">
+      <div class="aero-player-name">MUSIC</div>
+      <div class="aero-player-status" id="aero-status">
+        Ready to play
+      </div>
+    </div>
+    <div class="aero-player-light"></div>
+  </div>
+
+  <div class="aero-track-title" id="aero-track-title">
+    No tracks selected
+  </div>
+
+  <audio id="aero-audio" preload="metadata"></audio>
+
+  <div class="aero-progress-area">
+    <span id="aero-current-time">0:00</span>
+    <input
+      type="range"
+      id="aero-seek"
+      min="0"
+      max="100"
+      value="0"
+      aria-label="Posizione della traccia"
+    >
+    <span id="aero-duration">0:00</span>
+  </div>
+
+  <div class="aero-controls">
+    <button type="button" id="aero-play" aria-label="Riproduci o metti in pausa">
+      ▶
+    </button>
+    <button type="button" id="aero-next" aria-label="Traccia successiva">
+      ⏭
+    </button>
+    <label class="aero-volume">
+      <span>🔊</span>
+      <input
+        type="range"
+        id="aero-volume"
+        min="0"
+        max="1"
+        step="0.01"
+        value="0.7"
+        aria-label="Volume"
+      >
+    </label>
+  </div>
+
+  <div class="aero-file-buttons">
+    <label class="aero-file-button">
+      ♫ Choose a song
+      <input
+        type="file"
+        id="aero-single-file"
+        accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus"
+      >
+    </label>
+
+    <label class="aero-file-button">
+      ▧ Choose a folder
+      <input
+        type="file"
+        id="aero-folder-files"
+        accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus"
+        webkitdirectory
+        multiple
+      >
+    </label>
+  </div>
+
+  <div class="aero-footer">
+    <span>GLASS AUDIO SYSTEM</span>
+    <span id="aero-mode-label">SINGLE MODE</span>
+  </div>
+</div>
+
+
+</div>
+
+
+<br>
+<br>
+
+<div style="color: black; border: 5px solid white; background-color: #D08ADB; display: inline-block; font-family: Arial Black;">
+
+<p>You've reached the end of this page!</p>
+
+</div>
+
+<div class="catsad">
+
+<p><img class="catsad" draggable="false" style="border: 5px solid white;" src="rsc/images/catsad.gif"></p>
+
+
+
+
+
+</div>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+
+
+</body>
+</html>

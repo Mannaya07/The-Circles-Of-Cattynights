@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zucca da terminale</title>
+<style>
+
+
+  button:hover {
+
+    cursor: pointer;
+  }
+
+
+  :root {
+    --ghost: rgba(240, 228, 245, .26);
+    --ok: #fbf1ff;
+    --bad: #ff6b81;
+    --line: rgba(255, 255, 255, .14);
+    --panel: rgba(10, 5, 16, .76);
+    --accent: #ff9a3c;
+    --muted: rgba(240, 228, 245, .7);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px 16px;
+    color: var(--ok);
+    font-family: "JetBrains Mono", "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  }
+  main { width: min(720px, 100%); }
+  h1 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 600; letter-spacing: .01em; }
+  .hint { margin: 0 0 16px; max-width: 62ch; font-size: .85rem; line-height: 1.55; color: var(--muted); }
+
+  .win {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    overflow: hidden;
+  }
+  .bar {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--line);
+    font-size: .78rem; color: var(--muted);
+  }
+  .meter { height: 2px; width: 0; background: var(--accent); transition: width .12s linear; }
+
+  /* ---- Editor ---- */
+  .editor { position: relative; padding: 18px 18px 22px; min-height: 250px; cursor: text; }
+  pre.code {
+    margin: 0; font: inherit;
+    font-size: clamp(.78rem, 2.4vw, 1rem);
+    line-height: 1.75;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .g { color: var(--ghost); }
+  .ok { color: var(--ok); }
+  .bad { color: var(--bad); background: rgba(255, 90, 110, .2); border-radius: 2px; }
+  .nl { opacity: .7; }
+  .cur { box-shadow: inset 2px 0 0 var(--accent); animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { box-shadow: none; } }
+  #in {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    opacity: 0; resize: none; border: 0; padding: 0; margin: 0;
+    font-size: 16px; cursor: text;
+  }
+  .foot {
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--line);
+    font-size: .78rem; color: var(--muted);
+  }
+  .foot .warn { color: var(--bad); }
+
+  /* ---- Esecuzione ---- */
+  .run { padding: 18px 18px 20px; min-height: 250px; }
+  .prompt { margin: 0 0 12px; font-size: .9rem; color: var(--accent); }
+  #zucca {
+    margin: 0; font: inherit;
+    font-size: clamp(1rem, 4.2vw, 1.5rem);
+    line-height: 1.25;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .t { text-shadow: 0 0 10px currentColor; }
+  .count { height: 3px; margin-top: 20px; background: rgba(255, 255, 255, .12); border-radius: 2px; overflow: hidden; }
+  .count i { display: block; height: 100%; width: 100%; background: var(--accent); }
+  .secs { margin: 8px 0 0; font-size: .78rem; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cur { animation: none; }
+    .meter { transition: none; }
+  }
+</style>
+</head>
+
+<!-- ============================================================
+     SFONDO: cambialo qui sotto, dentro style="..."
+     Esempi:  background: #1a0b2e;
+              background: url('sfondo.jpg') center / cover fixed;
+     ============================================================ -->
+<body style="background-image: url('../bgimg/background5.png');">
+
+  <a href="../../index.html"> <button style="background-color: grey; color: yellow; border-radius: 30px;" > Back </button></a>
+
+<main>
+  <h1>Zucca da terminale</h1>
+  <p class="hint">Scrivi il codice che vedi in trasparenza, carattere per carattere. Dopo ogni Invio il rientro si compila da solo (oppure usa Tab). Se è tutto giusto, la zucca si accende per 10 secondi.</p>
+
+  <div class="win">
+    <section id="editor">
+      <div class="bar"><span>zucca.py</span><span>Python</span></div>
+      <div class="meter" id="meter"></div>
+      <div class="editor" id="area">
+        <pre class="code" id="code" aria-hidden="true"></pre>
+        <textarea id="in" aria-label="Scrivi qui il codice della zucca" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></textarea>
+      </div>
+      <div class="foot"><span id="stat" role="status"></span><span>Backspace corregge</span></div>
+    </section>
+
+    <section class="run" id="run" hidden>
+      <p class="prompt">$ python zucca.py</p>
+      <pre id="zucca" aria-label="La tua zucca di Halloween"></pre>
+      <div class="count"><i id="count"></i></div>
+      <p class="secs" id="secs"></p>
+    </section>
+  </div>
+</main>
+
+<script>
+/* ---------- Programmi da scrivere (puoi aggiungerne altri) ---------- */
+const centra = (s, n) => {                       // come str.center() di Python
+  const p = n - s.length, l = Math.floor(p / 2);
+  return " ".repeat(l) + s + " ".repeat(p - l);
+};
+
+const ZUCCA_A = [
+  "      _|_",
+  "  .-~~~~~~~-.",
+  " (  <>   <>  )",
+  " (     ^     )",
+  " (  VvVvVvV  )",
+  " (           )",
+  "  '-._____.-'"
+];
+
+const PROGRAMMI = [
+  {
+    codice:
+'zucca = [\n' +
+ZUCCA_A.map(r => '    "' + r + '",').join('\n') +
+'\n]\nfor riga in zucca:\n    print(riga)',
+    output() { return ZUCCA_A.slice(); }
+  },
+  {
+    codice:
+`w = 17
+print("_|_".center(w))
+print((".-" + "~" * 9 + "-.").center(w))
+for riga in ["<>     <>", "^", "VvVvVvV", ""]:
+    print(("(" + riga.center(13) + ")").center(w))
+print(("'-." + "_" * 7 + ".-'").center(w))`,
+    output() {
+      const w = 17;
+      const r = [centra("_|_", w), centra(".-" + "~".repeat(9) + "-.", w)];
+      for (const riga of ["<>     <>", "^", "VvVvVvV", ""]) r.push(centra("(" + centra(riga, 13) + ")", w));
+      r.push(centra("'-." + "_".repeat(7) + ".-'", w));
+      return r;
+    }
+  },
+  {
+    codice:
+`print("|".center(17))
+for i, n in enumerate([9, 13, 15, 15, 15, 13, 9]):
+    riga = "#" * n
+    if i == 2:
+        riga = riga[:3] + "  " + riga[5:10] + "  " + riga[12:]
+    if i == 3:
+        riga = riga[:7] + "^" + riga[8:]
+    if i == 4:
+        riga = riga[:4] + " " * 7 + riga[11:]
+    print(riga.center(17))`,
+    output() {
+      const r = [centra("|", 17)];
+      [9, 13, 15, 15, 15, 13, 9].forEach((n, i) => {
+        let s = "#".repeat(n);
+        if (i === 2) s = s.slice(0, 3) + "  " + s.slice(5, 10) + "  " + s.slice(12);
+        if (i === 3) s = s.slice(0, 7) + "^" + s.slice(8);
+        if (i === 4) s = s.slice(0, 4) + " ".repeat(7) + s.slice(11);
+        r.push(centra(s, 17));
+      });
+      return r;
+    }
+  }
+];
+
+const DURATA = 10000; // millisecondi di spettacolo
+
+/* ---------- Elementi ---------- */
+const $ = s => document.querySelector(s);
+const ta = $('#in'), codeEl = $('#code'), stat = $('#stat'), meter = $('#meter');
+const editor = $('#editor'), run = $('#run'), zucca = $('#zucca');
+const count = $('#count'), secs = $('#secs'), area = $('#area');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let idx = 0, target = '', typed = '', running = false;
+
+/* ---------- Editor di digitazione ---------- */
+function esc(c) { return c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c; }
+
+function caricaProgramma() {
+  target = PROGRAMMI[idx % PROGRAMMI.length].codice;
+  typed = '';
+  ta.value = '';
+  ta.maxLength = target.length;
+  render();
+}
+
+function render() {
+  let h = '', err = 0, giusti = 0;
+  for (let i = 0; i < target.length; i++) {
+    const c = target[i];
+    let cls = 'g';
+    if (i < typed.length) {
+      if (typed[i] === c) { cls = 'ok'; giusti++; } else { cls = 'bad'; err++; }
+    } else if (i === typed.length) {
+      cls = 'g cur';
+    }
+    h += c === '\n' ? `<span class="${cls} nl">↵</span>\n` : `<span class="${cls}">${esc(c)}</span>`;
+  }
+  codeEl.innerHTML = h;
+  meter.style.width = (giusti / target.length * 100) + '%';
+  stat.innerHTML = `${giusti}/${target.length} caratteri` +
+    (err ? ` · <span class="warn">${err} ${err === 1 ? 'errore' : 'errori'}</span>` : '');
+}
+
+function setTyped(v) {
+  typed = v;
+  ta.value = v;
+  ta.setSelectionRange(v.length, v.length);
+  render();
+  if (!running && typed === target) vinci();
+}
+
+ta.addEventListener('input', () => {
+  let v = ta.value.slice(0, target.length);
+  if (v.length > typed.length && v.endsWith('\n') && target[v.length - 1] === '\n') {
+    while (target[v.length] === ' ') v += ' ';          // rientro automatico
+  } else if (v.length < typed.length) {
+    const m = v.match(/\n +$/);
+    if (m) v = v.slice(0, v.length - (m[0].length - 1)); // il rientro si cancella in blocco
+  }
+  setTyped(v);
+});
+
+ta.addEventListener('keydown', e => {
+  ensureAudio();
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    let v = typed, i = v.length;
+    while (target[i] === ' ') { v += ' '; i++; }
+    if (v !== typed) setTyped(v);
+  }
+});
+['paste', 'cut', 'drop'].forEach(ev => ta.addEventListener(ev, e => e.preventDefault()));
+['select', 'click', 'focus'].forEach(ev =>
+  ta.addEventListener(ev, () => ta.setSelectionRange(ta.value.length, ta.value.length)));
+area.addEventListener('pointerdown', ensureAudio);
+document.addEventListener('click', () => { if (!running) ta.focus(); });
+
+/* ---------- Esecuzione: zucca colorata ---------- */
+let celle = [], righe = [], raf = 0, fineTimer = 0;
+
+// Colori di Halloween: arancione → viola → verde → arancione...
+const PALETTE = [[255, 122, 26], [168, 85, 247], [134, 224, 77]];
+function colore(p) {
+  const n = PALETTE.length, x = p * n, i = Math.floor(x) % n, f = x - Math.floor(x);
+  const a = PALETTE[i], b = PALETTE[(i + 1) % n];
+  const m = k => Math.round(a[k] + (b[k] - a[k]) * f);
+  return `rgb(${m(0)}, ${m(1)}, ${m(2)})`;
+}
+
+function vinci() {
+  running = true;
+  ta.blur();
+  ta.disabled = true;
+  setTimeout(avviaEsecuzione, 350);
+}
+
+function avviaEsecuzione() {
+  const testo = PROGRAMMI[idx % PROGRAMMI.length].output();
+  zucca.innerHTML = '';
+  celle = []; righe = [];
+  testo.forEach((riga, y) => {
+    const ln = document.createElement('div');
+    for (let x = 0; x < riga.length; x++) {
+      const ch = riga[x];
+      if (ch === ' ') { ln.append(' '); continue; }
+      const s = document.createElement('span');
+      s.className = 't';
+      s.textContent = ch;
+      ln.append(s);
+      celle.push({ el: s, x, y });
+    }
+    if (!riga.length) ln.textContent = ' ';
+    zucca.append(ln);
+    righe.push(ln);
+  });
+
+  editor.hidden = true;
+  run.hidden = false;
+
+  count.style.transition = 'none';
+  count.style.width = '100%';
+  void count.offsetWidth;
+  count.style.transition = `width ${DURATA}ms linear`;
+  count.style.width = '0%';
+
+  suonaMusica();
+
+  const t0 = performance.now();
+  const velocita = reduce ? 0.00012 : 0.00035; // giri di tavolozza per millisecondo
+  (function frame(now) {
+    const t = now - t0;
+    const visibili = reduce ? righe.length : Math.min(righe.length, Math.floor(t / 130) + 1);
+    righe.forEach((l, i) => { l.style.visibility = i < visibili ? 'visible' : 'hidden'; });
+    for (const c of celle) {
+      c.el.style.color = colore((t * velocita + c.x * 0.035 + c.y * 0.06) % 1);
+    }
+    secs.textContent = `Si torna a scrivere tra ${Math.max(0, Math.ceil((DURATA - t) / 1000))} s`;
+    raf = requestAnimationFrame(frame);
+  })(t0);
+
+  fineTimer = setTimeout(fineEsecuzione, DURATA);
+}
+
+function fineEsecuzione() {
+  cancelAnimationFrame(raf);
+  clearTimeout(fineTimer);
+  fermaMusica();
+  run.hidden = true;
+  editor.hidden = false;
+  ta.disabled = false;
+  idx++;
+  running = false;
+  caricaProgramma();
+  ta.focus();
+}
+
+/* ---------- Musica: inizio della Toccata e fuga in re minore (Bach, pubblico dominio) via Web Audio ---------- */
+// [frequenza in Hz, inizio in secondi, durata in secondi]
+const FRASI = [
+  [880.00, 0.00, 0.12], [783.99, 0.12, 0.12], [880.00, 0.24, 1.70],
+  [783.99, 2.10, 0.16], [698.46, 2.26, 0.16], [659.25, 2.42, 0.16], [587.33, 2.58, 0.16], [554.37, 2.74, 0.16], [587.33, 2.90, 1.90],
+  [440.00, 5.00, 0.12], [392.00, 5.12, 0.12], [440.00, 5.24, 1.50],
+  [392.00, 7.00, 0.16], [349.23, 7.16, 0.16], [329.63, 7.32, 0.16], [293.66, 7.48, 0.16], [277.18, 7.64, 0.16], [293.66, 7.80, 2.10]
+];
+const ACCORDO_FINALE = [73.42, 146.83, 174.61, 220.00]; // re minore, da 7.8 s alla fine
+
+let AC = null, master = null;
+
+function ensureAudio() {
+  try {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+  } catch (e) { /* senza audio si va avanti lo stesso */ }
+}
+
+function organo(f, t, dur, vol) {
+  const fine = t + dur;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + .03);
+  g.gain.setValueAtTime(vol, Math.max(t + .03, fine - .1));
+  g.gain.exponentialRampToValueAtTime(.0001, fine + .08);
+  const lp = AC.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 2600;
+  g.connect(lp); lp.connect(master);
+  [[1, 1], [2, .6], [3, .35], [4, .25], [6, .1]].forEach(([m, v]) => {
+    const o = AC.createOscillator(), og = AC.createGain();
+    o.type = 'sine'; o.frequency.value = f * m; og.gain.value = v;
+    o.connect(og); og.connect(g);
+    o.start(t); o.stop(fine + .15);
+  });
+}
+
+function suonaMusica() {
+  if (!AC) return;
+  const t0 = AC.currentTime + .05, tot = DURATA / 1000;
+  master = AC.createGain();
+  master.gain.setValueAtTime(.9, t0);
+  master.gain.setValueAtTime(.9, t0 + tot - .8);
+  master.gain.linearRampToValueAtTime(0, t0 + tot);
+  master.connect(AC.destination);
+
+  FRASI.forEach(([f, t, d]) => {
+    organo(f, t0 + t, d, .08);       // la melodia
+    organo(f / 2, t0 + t, d, .06);   // raddoppio all'ottava, come all'organo
+  });
+  organo(73.42, t0 + 2.9, 1.9, .1);  // pedale sotto la prima discesa
+  ACCORDO_FINALE.forEach(f => organo(f, t0 + 7.8, tot - 7.8 - .05, .06));
+}
+
+function fermaMusica() {
+  if (master) { try { master.disconnect(); } catch (e) {} master = null; }
+}
+
+/* ---------- Avvio ---------- */
+caricaProgramma();
+ta.focus();
+</script>
+</body>
+</html>

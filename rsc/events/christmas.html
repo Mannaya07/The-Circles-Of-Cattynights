@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alberello da terminale</title>
+<style>
+
+
+  button:hover {
+
+    cursor: pointer;
+  }
+
+
+  :root {
+    --ghost: rgba(226, 240, 230, .26);
+    --ok: #e9f7ee;
+    --bad: #ff7a7a;
+    --line: rgba(255, 255, 255, .14);
+    --panel: rgba(5, 13, 9, .74);
+    --accent: #7fe3a1;
+    --muted: rgba(226, 240, 230, .7);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px 16px;
+    color: var(--ok);
+    font-family: "JetBrains Mono", "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  }
+  main { width: min(720px, 100%); }
+  h1 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 600; letter-spacing: .01em; }
+  .hint { margin: 0 0 16px; max-width: 62ch; font-size: .85rem; line-height: 1.55; color: var(--muted); }
+
+  .win {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--panel);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    overflow: hidden;
+  }
+  .bar {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--line);
+    font-size: .78rem; color: var(--muted);
+  }
+  .meter { height: 2px; width: 0; background: var(--accent); transition: width .12s linear; }
+
+  /* ---- Editor ---- */
+  .editor { position: relative; padding: 18px 18px 22px; min-height: 250px; cursor: text; }
+  pre.code {
+    margin: 0; font: inherit;
+    font-size: clamp(.85rem, 2.6vw, 1.05rem);
+    line-height: 1.75;
+    white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .g { color: var(--ghost); }
+  .ok { color: var(--ok); }
+  .bad { color: var(--bad); background: rgba(255, 90, 90, .18); border-radius: 2px; }
+  .nl { opacity: .7; }
+  .cur { box-shadow: inset 2px 0 0 var(--accent); animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { box-shadow: none; } }
+  #in {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    opacity: 0; resize: none; border: 0; padding: 0; margin: 0;
+    font-size: 16px; cursor: text;
+  }
+  .foot {
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 8px 14px; border-top: 1px solid var(--line);
+    font-size: .78rem; color: var(--muted);
+  }
+  .foot .warn { color: var(--bad); }
+
+  /* ---- Esecuzione ---- */
+  .run { padding: 18px 18px 20px; min-height: 250px; }
+  .prompt { margin: 0 0 12px; font-size: .9rem; color: var(--accent); }
+  #tree {
+    margin: 0; font: inherit;
+    font-size: clamp(1rem, 4.2vw, 1.5rem);
+    line-height: 1.25;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .t { text-shadow: 0 0 10px currentColor; }
+  .count { height: 3px; margin-top: 20px; background: rgba(255, 255, 255, .12); border-radius: 2px; overflow: hidden; }
+  .count i { display: block; height: 100%; width: 100%; background: var(--accent); }
+  .secs { margin: 8px 0 0; font-size: .78rem; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cur { animation: none; }
+    .meter { transition: none; }
+  }
+</style>
+</head>
+
+<!-- ============================================================
+     SFONDO: cambialo qui sotto, dentro style="..."
+     Esempi:  background: #102a1c;
+              background: url('sfondo.jpg') center / cover fixed;
+     ============================================================ -->
+<body style="background-image: url('../bgimg/background2.png');">
+
+  <a href="../../index.html"> <button style="background-color: grey; color: yellow; border-radius: 30px;" > Back </button></a>
+
+
+<main>
+  <h1>Alberello da terminale</h1>
+  <p class="hint">Scrivi il codice che vedi in trasparenza, carattere per carattere. Dopo ogni Invio il rientro si compila da solo (oppure usa Tab). Se è tutto giusto, l’albero parte per 10 secondi.</p>
+
+  <div class="win">
+    <section id="editor">
+      <div class="bar"><span>albero.py</span><span>Python</span></div>
+      <div class="meter" id="meter"></div>
+      <div class="editor" id="area">
+        <pre class="code" id="code" aria-hidden="true"></pre>
+        <textarea id="in" aria-label="Scrivi qui il codice dell’albero" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"></textarea>
+      </div>
+      <div class="foot"><span id="stat" role="status"></span><span>Backspace corregge</span></div>
+    </section>
+
+    <section class="run" id="run" hidden>
+      <p class="prompt">$ python albero.py</p>
+      <pre id="tree" aria-label="Il tuo albero di Natale"></pre>
+      <div class="count"><i id="count"></i></div>
+      <p class="secs" id="secs"></p>
+    </section>
+  </div>
+</main>
+
+<script>
+/* ---------- Programmi da scrivere (puoi aggiungerne altri) ---------- */
+const PROGRAMMI = [
+  {
+    codice:
+`altezza = 6
+for i in range(altezza):
+    print(" " * (altezza - i) + "*" * (2 * i + 1))
+print(" " * altezza + "|")`,
+    output() {
+      const n = 6, r = [];
+      for (let i = 0; i < n; i++) r.push(" ".repeat(n - i) + "*".repeat(2 * i + 1));
+      r.push(" ".repeat(n) + "|");
+      return r;
+    }
+  },
+  {
+    codice:
+`n = 7
+print(" " * n + "^")
+for i in range(1, n):
+    riga = ""
+    for j in range(2 * i + 1):
+        riga += "o" if j % 4 == 2 else "*"
+    print(" " * (n - i) + riga)
+print(" " * (n - 1) + "|||")`,
+    output() {
+      const n = 7, r = [" ".repeat(n) + "^"];
+      for (let i = 1; i < n; i++) {
+        let riga = "";
+        for (let j = 0; j < 2 * i + 1; j++) riga += (j % 4 === 2 ? "o" : "*");
+        r.push(" ".repeat(n - i) + riga);
+      }
+      r.push(" ".repeat(n - 1) + "|||");
+      return r;
+    }
+  },
+  {
+    codice:
+`for i in range(1, 12, 2):
+    print(("*" * i).center(13))
+print("[_]".center(13))`,
+    output() {
+      const r = [];
+      for (let i = 1; i < 12; i += 2) r.push(" ".repeat((13 - i) / 2) + "*".repeat(i));
+      r.push(" ".repeat(5) + "[_]");
+      return r;
+    }
+  }
+];
+
+const DURATA = 10000; // millisecondi di spettacolo
+
+/* ---------- Elementi ---------- */
+const $ = s => document.querySelector(s);
+const ta = $('#in'), codeEl = $('#code'), stat = $('#stat'), meter = $('#meter');
+const editor = $('#editor'), run = $('#run'), tree = $('#tree');
+const count = $('#count'), secs = $('#secs'), area = $('#area');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let idx = 0, target = '', typed = '', running = false;
+
+/* ---------- Editor di digitazione ---------- */
+function esc(c) { return c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c; }
+
+function caricaProgramma() {
+  target = PROGRAMMI[idx % PROGRAMMI.length].codice;
+  typed = '';
+  ta.value = '';
+  ta.maxLength = target.length;
+  render();
+}
+
+function render() {
+  let h = '', err = 0, giusti = 0;
+  for (let i = 0; i < target.length; i++) {
+    const c = target[i];
+    let cls = 'g';
+    if (i < typed.length) {
+      if (typed[i] === c) { cls = 'ok'; giusti++; } else { cls = 'bad'; err++; }
+    } else if (i === typed.length) {
+      cls = 'g cur';
+    }
+    h += c === '\n' ? `<span class="${cls} nl">↵</span>\n` : `<span class="${cls}">${esc(c)}</span>`;
+  }
+  codeEl.innerHTML = h;
+  meter.style.width = (giusti / target.length * 100) + '%';
+  stat.innerHTML = `${giusti}/${target.length} caratteri` +
+    (err ? ` · <span class="warn">${err} ${err === 1 ? 'errore' : 'errori'}</span>` : '');
+}
+
+function setTyped(v) {
+  typed = v;
+  ta.value = v;
+  ta.setSelectionRange(v.length, v.length);
+  render();
+  if (!running && typed === target) vinci();
+}
+
+ta.addEventListener('input', () => {
+  let v = ta.value.slice(0, target.length);
+  if (v.length > typed.length && v.endsWith('\n') && target[v.length - 1] === '\n') {
+    while (target[v.length] === ' ') v += ' ';          // rientro automatico
+  } else if (v.length < typed.length) {
+    const m = v.match(/\n +$/);
+    if (m) v = v.slice(0, v.length - (m[0].length - 1)); // il rientro si cancella in blocco
+  }
+  setTyped(v);
+});
+
+ta.addEventListener('keydown', e => {
+  ensureAudio();
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    let v = typed, i = v.length;
+    while (target[i] === ' ') { v += ' '; i++; }
+    if (v !== typed) setTyped(v);
+  }
+});
+['paste', 'cut', 'drop'].forEach(ev => ta.addEventListener(ev, e => e.preventDefault()));
+['select', 'click', 'focus'].forEach(ev =>
+  ta.addEventListener(ev, () => ta.setSelectionRange(ta.value.length, ta.value.length)));
+area.addEventListener('pointerdown', ensureAudio);
+document.addEventListener('click', () => { if (!running) ta.focus(); });
+
+/* ---------- Esecuzione: albero colorato ---------- */
+let celle = [], righe = [], raf = 0, fineTimer = 0;
+
+function vinci() {
+  running = true;
+  ta.blur();
+  ta.disabled = true;
+  setTimeout(avviaEsecuzione, 350);
+}
+
+function avviaEsecuzione() {
+  const testo = PROGRAMMI[idx % PROGRAMMI.length].output();
+  tree.innerHTML = '';
+  celle = []; righe = [];
+  testo.forEach((riga, y) => {
+    const ln = document.createElement('div');
+    for (let x = 0; x < riga.length; x++) {
+      const ch = riga[x];
+      if (ch === ' ') { ln.append(' '); continue; }
+      const s = document.createElement('span');
+      s.className = 't';
+      s.textContent = ch;
+      ln.append(s);
+      celle.push({ el: s, x, y });
+    }
+    if (!riga.length) ln.textContent = ' ';
+    tree.append(ln);
+    righe.push(ln);
+  });
+
+  editor.hidden = true;
+  run.hidden = false;
+
+  count.style.transition = 'none';
+  count.style.width = '100%';
+  void count.offsetWidth;
+  count.style.transition = `width ${DURATA}ms linear`;
+  count.style.width = '0%';
+
+  suonaMusica();
+
+  const t0 = performance.now();
+  const velocita = reduce ? 0.04 : 0.12; // gradi di colore per millisecondo
+  (function frame(now) {
+    const t = now - t0;
+    const visibili = reduce ? righe.length : Math.min(righe.length, Math.floor(t / 130) + 1);
+    righe.forEach((l, i) => { l.style.visibility = i < visibili ? 'visible' : 'hidden'; });
+    for (const c of celle) {
+      c.el.style.color = `hsl(${(t * velocita + c.x * 14 + c.y * 26) % 360} 95% 62%)`;
+    }
+    secs.textContent = `Si torna a scrivere tra ${Math.max(0, Math.ceil((DURATA - t) / 1000))} s`;
+    raf = requestAnimationFrame(frame);
+  })(t0);
+
+  fineTimer = setTimeout(fineEsecuzione, DURATA);
+}
+
+function fineEsecuzione() {
+  cancelAnimationFrame(raf);
+  clearTimeout(fineTimer);
+  fermaMusica();
+  run.hidden = true;
+  editor.hidden = false;
+  ta.disabled = false;
+  idx++;
+  running = false;
+  caricaProgramma();
+  ta.focus();
+}
+
+/* ---------- Musichetta: "Jingle Bells" (pubblico dominio) via Web Audio ---------- */
+const NOTE = { C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.00 };
+const BASSO_NOTE = { C: 130.81, F: 174.61, G: 196.00 };
+const MELODIA = [
+  ['E4',1],['E4',1],['E4',2],['E4',1],['E4',1],['E4',2],['E4',1],['G4',1],['C4',1.5],['D4',.5],['E4',4],
+  ['F4',1],['F4',1],['F4',1.5],['F4',.5],['F4',1],['E4',1],['E4',1],['E4',.5],['E4',.5],
+  ['E4',1],['D4',1],['D4',1],['E4',1],['D4',2],['G4',2]
+];
+const ARMONIA = ['C','C','C','C','F','F','C','G'];
+
+let AC = null, master = null, rumore = null;
+
+function ensureAudio() {
+  try {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+  } catch (e) { /* senza audio si va avanti lo stesso */ }
+}
+
+function campana(f, t, dur) {
+  const g = AC.createGain();
+  const fine = t + Math.max(dur * 1.1, .25);
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(.22, t + .01);
+  g.gain.exponentialRampToValueAtTime(.0001, fine);
+  g.connect(master);
+  [[1, 1], [2, .35], [4.1, .08]].forEach(([m, v]) => {
+    const o = AC.createOscillator(), og = AC.createGain();
+    o.type = 'sine'; o.frequency.value = f * m; og.gain.value = v;
+    o.connect(og); og.connect(g);
+    o.start(t); o.stop(fine + .05);
+  });
+}
+
+function basso(f, t, dur) {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = 'triangle'; o.frequency.value = f;
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(.12, t + .02);
+  g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(master);
+  o.start(t); o.stop(t + dur + .05);
+}
+
+function sonaglio(t, vol) {
+  if (!rumore) {
+    rumore = AC.createBuffer(1, Math.floor(AC.sampleRate * .1), AC.sampleRate);
+    const d = rumore.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const s = AC.createBufferSource(), hp = AC.createBiquadFilter(), g = AC.createGain();
+  s.buffer = rumore;
+  hp.type = 'highpass'; hp.frequency.value = 6500;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(.0001, t + .07);
+  s.connect(hp); hp.connect(g); g.connect(master);
+  s.start(t); s.stop(t + .08);
+}
+
+function suonaMusica() {
+  if (!AC) return;
+  const t0 = AC.currentTime + .05, beat = .3, tot = DURATA / 1000;
+  master = AC.createGain();
+  master.gain.setValueAtTime(.9, t0);
+  master.gain.setValueAtTime(.9, t0 + tot - .8);
+  master.gain.linearRampToValueAtTime(0, t0 + tot);
+  master.connect(AC.destination);
+
+  let t = t0;
+  MELODIA.forEach(([n, d]) => { campana(NOTE[n], t, d * beat); t += d * beat; });
+  ARMONIA.forEach((n, b) => {
+    basso(BASSO_NOTE[n], t0 + b * 4 * beat, 2 * beat);
+    basso(BASSO_NOTE[n], t0 + (b * 4 + 2) * beat, 2 * beat);
+  });
+  for (let k = 0; k < 64; k++) sonaglio(t0 + k * beat / 2, k % 2 ? .03 : .05);
+}
+
+function fermaMusica() {
+  if (master) { try { master.disconnect(); } catch (e) {} master = null; }
+}
+
+/* ---------- Avvio ---------- */
+caricaProgramma();
+ta.focus();
+</script>
+</body>
+</html>
